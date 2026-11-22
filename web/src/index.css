@@ -177,7 +177,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .stat-card:enabled:hover { border-color: var(--line-2) !important; background: var(--tile) !important; }
 .stat-card [class*="text-accent/"] { color: var(--faint) !important; }
 
-/* prostokątne krawędzie (decyzja Piotrka): bez zaokrągleń; okrągłe zostają tylko kropki statusu i suwak przełącznika */
+/* prostokątne krawędzie: bez zaokrągleń; okrągłe zostają tylko kropki statusu i suwak przełącznika */
 .rounded-full[class*="h-1.5"], .rounded-full[class*="h-2 "], .keep-round { border-radius: 9999px !important; }
 
 /* skala typografii 1.2 (baza 14): 12 · 14 · 17 · 20 · 24 · 29; etykiety bez szerokiego rozstrzelenia (spokojniej) */

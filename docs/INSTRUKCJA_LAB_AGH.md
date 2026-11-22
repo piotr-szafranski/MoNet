@@ -4,7 +4,7 @@ Instrukcja dla zespołu testującego: jak uruchomić MoNet, podłączyć go do l
 punkty testu (dwa przebiegi skanu, porównanie, edycja znalezisk, import i eksport, role, DefectDojo).
 Polecenia wpisuje się w terminalu na maszynie z Dockerem. Przy każdym poleceniu jest krótkie wyjaśnienie.
 
-Repozytorium: **https://github.com/piotr-szafranski/MoNet**
+Repozytorium: **https://github.com/piotr-szafranski/MoNet** (ta instrukcja w PDF: `docs/INSTRUKCJA_AGH.pdf`)
 
 > **Zasada bezpieczeństwa:** MoNet skanuje wyłącznie adresy z listy celów i tylko w sieciach dozwolonych przez
 > administratora (Administracja → Polityka Skanera). Domyślnie dozwolone są wyłącznie sieci prywatne.
@@ -102,7 +102,7 @@ Domyślnie MoNet pozwala skanować tylko sieci prywatne (`10.0.0.0/8`, `172.16.0
 
 - **Jeśli cel to `127.0.0.1` (usługi wystawione na localhost) albo adres publiczny,** dopisz go w polu
   „Dozwolone sieci” (np. `127.0.0.0/8`) i zapisz. Inaczej MoNet odrzuci cel już przy dodawaniu.
-- **Jeśli AGH podało limity ruchu,** wpisz je tu jako maksymalne tempo. Żadna konfiguracja skanu ich nie przekroczy
+- **Jeśli laboratorium ma określone limity ruchu,** wpisz je tu jako maksymalne tempo. Żadna konfiguracja skanu ich nie przekroczy
   (przy zapisie pojawi się komunikat o obcięciu), a skan sprawdza politykę także przy każdym wznowieniu.
 - Opcja „Nie sprawdzaj ścieżek ogólnych” wyłącza zapytania o `/admin`, `/.env`, `/.git/HEAD`, `/server-status`
   na każdej usłudze HTTP (zostają tylko ścieżki potwierdzające technologię).

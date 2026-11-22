@@ -1,0 +1,13 @@
+http:
+  routers:
+    wordpress:
+      entryPoints:
+        - web
+      rule: PathPrefix(`/`)
+      service: wordpress-service
+
+  services:
+    wordpress-service:
+      loadBalancer:
+        servers:
+          - url: "http://toxiproxy:8666"

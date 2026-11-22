@@ -11,3 +11,12 @@ master.key
 /third_party/defectdojo/.env
 /logs/autopilot.log
 /STOP_AUTOPILOT
+
+# pliki robocze (nie publikujemy)
+AUTOPILOT.md
+TASKS.md
+env.sh
+scripts/autopilot.sh
+logs/autopilot.md
+logs/*.log
+docs/hacktribe/

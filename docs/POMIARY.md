@@ -86,7 +86,7 @@ Test wyłapał i pomógł naprawić jedną niezgodność: Operator miał dostęp
 | Czas | **11 min 09 s**, jedno okno |
 | Porty | 21-23,80,443,554,3000,3306,3389,6379,8000,8080-8081,8443,9100,9200 |
 
-Niezależna kontrola krytyka na 10.66.8.0/24 (skany #69, #70) względem `/truth` symulatora: 28/28 hostów, 43/43 portów.
+Niezależna kontrola na 10.66.8.0/24 (skany #69, #70) względem `/truth` symulatora: 28/28 hostów, 43/43 portów.
 
 **Soft-404 (fałszywe trafienia ścieżek):**
 

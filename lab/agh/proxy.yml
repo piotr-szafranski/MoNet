@@ -16,7 +16,7 @@ services:
 
 
     volumes:
-      - /opt/hacknation/projekt/piotr/lab/traefik:/etc/traefik/dynamic:ro
+      - ./traefik:/etc/traefik/dynamic:ro
 
     depends_on:
       - toxiproxy

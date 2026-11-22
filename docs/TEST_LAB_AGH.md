@@ -1,4 +1,4 @@
-# Testy na szablonach labu AGH (piotr/lab, udostępnione 21.11.2026)
+# Testy na szablonach labu od mentorów AGH (udostępnione 21.11.2026)
 
 Stacki AGH uruchamiane po jednym z kopii w `lab/agh/` (obrazy i konfiguracja usług bez zmian). Różnice:
 - nazwa projektu `asi-agh-*`,

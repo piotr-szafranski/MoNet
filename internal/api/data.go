@@ -1094,7 +1094,7 @@ type hostOut struct {
 	Annotation  *annotation `json:"annotation,omitempty"`
 }
 
-// Widoki hostów (decyzja Piotrka 21.11):
+// Widoki hostów:
 //
 //	active   = widziany w skanie w ciągu ostatnich 24 h (i nie jest niestabilny),
 //	unstable = widziany w ciągu 24 h, ale w skanach nocnych (22–06) nie odpowiada: pojawia się tylko w dzień,

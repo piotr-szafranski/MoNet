@@ -8,9 +8,9 @@ Jeśli kod CSS rozjedzie się z tym plikiem, wygrywa ten plik.
 - **Artefakt:** dashboard / narzędzie danych, wariant operacyjny i analityczny (monitoring powierzchni ataku).
 - **Dla kogo:** analitycy Centrum Bezpieczeństwa Informacji AGH; drugi odbiorca: jury HackNation (kilka minut na ocenę).
 - **Decyzja, którą wspiera dashboard:** „co jest wystawione i wymaga uwagi teraz, i co zmieniło się od ostatniego skanu”.
-- **Przymiotniki:** spokojny, instytucjonalny, czytelny (wybór Piotrka, 22.11).
+- **Przymiotniki:** spokojny, instytucjonalny, czytelny (wybór zespołu, 22.11).
 - **Esencja estetyki:** „spokojny rejestr operacyjny”.
-- **Ograniczenia od Piotrka (mają pierwszeństwo przed skillem):** krawędzie prostokątne; wyjątki zaokrąglone tylko dla
+- **Ograniczenia zespołu (mają pierwszeństwo przed wytycznymi ogólnymi):** krawędzie prostokątne; wyjątki zaokrąglone tylko dla
   przełącznika w stylu Apple, kropek statusu i wykrzyknika w menu. Jasny motyw wg `docs/biale ui.jpg`, ciemny domyślny.
 
 ## 2. System (Phase 1)
@@ -35,7 +35,7 @@ Jeśli kod CSS rozjedzie się z tym plikiem, wygrywa ten plik.
 
   Proporcja ok. 60-30-10: neutralne płaszczyzny / tekst i linie / akcent. Czerwień tylko dla „wymaga działania”.
 - **Odstępy:** baza 4 px; ciasno w grupach, szeroko między sekcjami (24 px).
-- **Promień:** 0 (decyzja Piotrka). **Cienie:** brak; elewacja przez jasność płaszczyzny i jedną linię krawędzi.
+- **Promień:** 0 (decyzja zespołu). **Cienie:** brak; elewacja przez jasność płaszczyzny i jedną linię krawędzi.
 - **Znak rozpoznawczy:** **pasek werdyktu** na górze dashboardu: jedno zdanie decyzji („Wymaga uwagi: N usług wysokiej
   klasy…”), cztery liczby, które je uzasadniają (wysoka klasa, zmiany od ostatniego skanu, nowe technologie do oceny,
   hosty niewidziane > 48 h), czerwony kwadrat przy liczbach wymagających działania (kolor + kształt + liczba) i jedna akcja.
