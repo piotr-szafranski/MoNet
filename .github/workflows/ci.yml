@@ -10,6 +10,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # frontend jest osadzany w binarce (internal/api/webdist), więc budujemy go przed vet/test
+      - run: npm ci && npx vite build
+        working-directory: web
       - run: go vet ./...
       - run: go test ./internal/...
       - run: go run honnef.co/go/tools/cmd/staticcheck@2025.1.1 ./... || true
