@@ -15,7 +15,7 @@ Repozytorium: **https://github.com/piotr-szafranski/MoNet**
 
 | Element | Wymaganie |
 |---|---|
-| System | Linux z Dockerem i Docker Compose v2 (`docker compose`) |
+| System | Linux z Dockerem i Docker Compose (`docker compose`; w starszych instalacjach `docker-compose`) |
 | Zasoby | ok. 1 GB RAM, 1 GB miejsca na dysku |
 | Port | 8080 (interfejs WWW MoNet) |
 | Sieć | dostęp do sieci, w której działa laboratorium AGH (patrz krok 3) |
@@ -45,7 +45,7 @@ Tworzy plik `.env` z ustawieniami:
 docker compose up -d --build
 ```
 *Buduje obraz (frontend, backend w Go i nmap) i uruchamia kontener `asi-app` w tle. Pierwsze uruchomienie trwa
-kilka minut.*
+kilka minut. Sprawdzone od zera na czystym klonie repozytorium (obraz ok. 130 MB).*
 
 ```bash
 docker logs --tail 20 asi-app
