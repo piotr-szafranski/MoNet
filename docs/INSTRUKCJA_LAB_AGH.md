@@ -1,338 +1,258 @@
-# Instrukcja: uruchomienie testów na środowisku od AGH
+# MoNet: instrukcja uruchomienia i testu w środowisku AGH
 
-Instrukcja krok po kroku: jak uruchomić materiały od AGH (kontenery z testowym środowiskiem), podłączyć do nich MoNet
-i przejść cały test. Przy każdym poleceniu jest wyjaśnienie, **co ono robi**. Polecenia wpisuje się w terminalu
-na serwerze (po zalogowaniu przez SSH).
+Instrukcja dla zespołu testującego: jak uruchomić MoNet, podłączyć go do laboratorium AGH i przejść wszystkie
+punkty testu (dwa przebiegi skanu, porównanie, edycja znalezisk, import i eksport, role, DefectDojo).
+Polecenia wpisuje się w terminalu na maszynie z Dockerem. Przy każdym poleceniu jest krótkie wyjaśnienie.
 
-> **Zasada nr 1:** skanujemy wyłącznie środowisko od AGH (albo nasz lab). Nigdy nie wpisujemy w MoNet adresów spoza
-> tego, co AGH wskaże jako cel testu.
+Repozytorium: **https://github.com/piotr-szafranski/MoNet**
+
+> **Zasada bezpieczeństwa:** MoNet skanuje wyłącznie adresy z listy celów i tylko w sieciach dozwolonych przez
+> administratora (Administracja → Polityka Skanera). Domyślnie dozwolone są wyłącznie sieci prywatne.
 
 ---
 
-## 0. Co dostaniemy od AGH i gdzie to położyć
+## 1. Wymagania
 
-AGH zapowiedziało, że udostępni (na Discordzie albo przy stanowisku):
-
-| Materiał | Co z nim zrobimy |
+| Element | Wymaganie |
 |---|---|
-| konfiguracja kontenerów (zwykle plik `docker-compose.yml`) | uruchomimy środowisko testowe (krok 3) |
-| zasady bezpiecznego skanowania, limity ruchu | ustawimy limity w konfiguracji skanu (krok 9) |
-| lista dozwolonych portów | wpiszemy w polu „Porty” (krok 8) |
-| przykładowe wyniki referencyjne | zaimportujemy i porównamy z naszym skanem (krok 12) |
-| przykładowe sygnatury | zaimportujemy w zakładce Sygnatury (krok 10) |
-| przykładowy format importu/eksportu | sprawdzimy import i eksport (krok 14) |
-| opcjonalnie: testowa instancja DefectDojo | podłączymy w ustawieniach (krok 13) |
+| System | Linux z Dockerem i Docker Compose v2 (`docker compose`) |
+| Zasoby | ok. 1 GB RAM, 1 GB miejsca na dysku |
+| Port | 8080 (interfejs WWW MoNet) |
+| Sieć | dostęp do sieci, w której działa laboratorium AGH (patrz krok 3) |
 
-Wszystko zapisujemy w jednym katalogu:
-
-```bash
-mkdir -p /opt/hacknation/projekt/piotr/agh
-```
-*Tworzy katalog `agh` na materiały od AGH. Jeśli już istnieje, nic się nie dzieje.*
-
-Pliki z własnego komputera wrzucamy na serwer (polecenie wpisujemy **na swoim Macu**, nie na serwerze):
-
-```bash
-scp -r ~/Downloads/materialy-agh/* pszafranski@10.1.3.155:/opt/hacknation/projekt/piotr/agh/
-```
-*Kopiuje pliki z folderu `materialy-agh` na Macu do katalogu `agh` na serwerze. Jeśli jesteśmy poza siecią
-lokalną, zamiast `10.1.3.155` wpisujemy `100.84.180.79` (Tailscale).*
+Nmap jest wbudowany w obraz MoNet, nie trzeba go instalować osobno.
 
 ---
 
-## 1. Zaloguj się na serwer i przejdź do projektu
+## 2. Pobranie i uruchomienie
 
 ```bash
-ssh pszafranski@10.1.3.155
+git clone https://github.com/piotr-szafranski/MoNet.git
+cd MoNet
 ```
-*Łączy z serwerem. Od tej chwili polecenia wykonują się na serwerze.*
+*Pobiera kod MoNet i przechodzi do katalogu projektu.*
 
 ```bash
-cd /opt/hacknation/projekt/piotr/asi
+printf "ASI_MASTER_KEY=$(openssl rand -base64 32)\nASI_ADMIN_PASSWORD=ZmienToHaslo2026\nASI_DEMO_USERS=1\n" > .env
 ```
-*Przechodzi do katalogu z kodem MoNet. Kolejne polecenia zakładają, że tu jesteśmy.*
+Tworzy plik `.env` z ustawieniami:
+
+- `ASI_MASTER_KEY`: losowy klucz szyfrowania danych w spoczynku (AES-256-GCM);
+- `ASI_ADMIN_PASSWORD`: hasło konta `admin`, co najmniej 10 znaków (wpisz własne);
+- `ASI_DEMO_USERS=1`: dodatkowo tworzy konta demo dla czterech ról (krok 12). Bez tej linii powstaje tylko `admin`.
 
 ```bash
-docker ps --format '{{.Names}}\t{{.Status}}' | grep asi-
+docker compose up -d --build
 ```
-*Pokazuje nasze działające kontenery. Powinniśmy zobaczyć `asi-app` (aplikacja) i ewentualnie `asi-lab-*`
-(nasz własny lab) oraz `asi-dojo-*` (nasz testowy DefectDojo).*
+*Buduje obraz (frontend, backend w Go i nmap) i uruchamia kontener `asi-app` w tle. Pierwsze uruchomienie trwa
+kilka minut.*
+
+```bash
+docker logs --tail 20 asi-app
+```
+*Pokazuje ostatnie linie dziennika. Powinno być widać „MoNet nasłuchuje na :8080”.*
+
+Interfejs: **http://localhost:8080** (albo `http://<adres maszyny>:8080`). Logowanie: `admin` i hasło z pliku `.env`.
+Przy pierwszym logowaniu otwiera się krótki samouczek (8 kroków), który można pominąć.
 
 ---
 
-## 2. Obejrzyj konfigurację od AGH, zanim ją uruchomisz
+## 3. Podłączenie MoNet do laboratorium AGH
+
+Wybierz wariant zależnie od tego, jak uruchomione jest laboratorium.
+
+**Wariant A: kontenery AGH działają w Dockerze na tej samej maszynie (zalecany).**
 
 ```bash
-ls -la ../agh/
+docker network ls
 ```
-*Pokazuje, jakie pliki przyszły od AGH.*
+*Wyświetla sieci Dockera. Szukamy sieci laboratorium AGH (np. `agh_default` albo nazwy z ich pliku compose).*
 
 ```bash
-cat ../agh/docker-compose.yml
+docker network inspect <sieć_AGH> -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}'
 ```
-*Wyświetla plik z konfiguracją kontenerów. Szukamy w nim trzech rzeczy:*
-
-- *`networks:` – jak nazywa się sieć i jaki ma zakres adresów (np. `172.30.0.0/24`), bo to będzie nasz cel skanu,*
-- *`ports:` – czy coś jest wystawiane na zewnątrz serwera (np. `"80:80"`). Jeśli port jest już zajęty na serwerze, uruchomienie się nie uda (patrz „Problemy”, punkt A),*
-- *`container_name:` – nazwy kontenerów (przydadzą się do sprawdzania).*
-
-> Jeśli plik jest inny niż `docker-compose.yml` (np. `compose.yaml` albo kilka plików), podstawiamy jego nazwę
-> w poleceniach poniżej.
-
----
-
-## 3. Uruchom środowisko testowe AGH
+*Podaje zakres adresów sieci laboratorium, np. `172.20.0.0/24`. Zapisz go, to będzie cel skanu.*
 
 ```bash
-docker-compose -p asi-agh -f ../agh/docker-compose.yml up -d
+docker network connect <sieć_AGH> asi-app
 ```
-*Uruchamia kontenery AGH w tle (`-d`). `-p asi-agh` nadaje projektowi nazwę z prefiksem `asi-`, więc łatwo
-odróżnić nasze zasoby od zasobów innych osób na serwerze. Przy pierwszym uruchomieniu Docker pobiera obrazy,
-co może potrwać kilka minut.*
+*Dołącza kontener MoNet do sieci laboratorium. MoNet widzi wtedy kontenery AGH bezpośrednio, na ich wewnętrznych portach.*
+
+**Wariant B: laboratorium jest na innej maszynie albo usługi są wystawione na portach hosta.**
+W pliku `docker-compose.yml` odkomentuj linię `network_mode: host` i usuń linię `ports`, potem:
 
 ```bash
-docker-compose -p asi-agh -f ../agh/docker-compose.yml ps
+docker compose up -d
 ```
-*Pokazuje stan kontenerów AGH. Wszystkie powinny mieć stan `Up` (działa).*
+*MoNet korzysta wtedy bezpośrednio z sieci maszyny (surowe pakiety nmapa, ARP). Interfejs nadal na porcie 8080.*
 
----
-
-## 4. Sprawdź, w jakiej sieci działają kontenery AGH
+**Sprawdzenie łączności (tylko wykrywanie hostów, bez skanu portów):**
 
 ```bash
-docker network ls | grep asi-agh
+docker exec asi-app nmap -sn -n <zakres_AGH>
 ```
-*Wyświetla sieci utworzone przez projekt AGH, np. `asi-agh_default` albo nazwę z ich pliku.*
-
-```bash
-docker network inspect asi-agh_default -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}'
-```
-*Podaje zakres adresów tej sieci, np. `172.30.0.0/24`. **Zapisz go.** To będzie cel skanu w kroku 7.
-(Zamiast `asi-agh_default` wpisz nazwę sieci z poprzedniego polecenia.)*
-
-```bash
-docker network inspect asi-agh_default -f '{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\n"}}{{end}}'
-```
-*Wypisuje kontenery AGH z ich adresami IP. Przyda się do sprawdzenia, czy MoNet znalazło wszystkie hosty.*
+*Powinny pojawić się linie `Host is up` dla kontenerów AGH.*
 
 ---
 
-## 5. Podłącz MoNet do sieci AGH
+## 4. Polityka skanera (Administracja → Polityka Skanera)
 
-MoNet działa w swoim kontenerze `asi-app`. Żeby mogło skanować kontenery AGH, musi być w tej samej sieci.
+Domyślnie MoNet pozwala skanować tylko sieci prywatne (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
+`100.64.0.0/10`) z limitami 5000 pakietów/s, 100 zapytań HTTP/s i 8 równoległych podgrup.
 
-**Sposób szybki (do końca testu):**
-
-```bash
-docker network connect asi-agh_default asi-app
-```
-*Dołącza kontener `asi-app` do sieci AGH. Aplikacja działa dalej bez restartu i od razu widzi hosty AGH.*
-
-```bash
-docker exec asi-app ip -4 addr | grep inet
-```
-*Pokazuje adresy kontenera MoNet. Jeden z nich powinien należeć do zakresu z kroku 4. To znaczy, że połączenie działa.*
-
-**Sposób trwały (po restarcie też działa):** w pliku `docker-compose.lab.yml` w sekcji `networks:` dopisujemy sieć AGH
-tak samo jak `asi-lab`:
-
-```yaml
-    networks: [default, lab, agh]
-networks:
-  lab: { external: true, name: asi-lab }
-  agh: { external: true, name: asi-agh_default }
-```
-*Mówi Dockerowi, że MoNet ma być zawsze podłączone także do sieci AGH.*
-
-```bash
-docker-compose -p asi -f docker-compose.lab.yml up -d
-```
-*Przeładowuje kontener MoNet z nową konfiguracją sieci. **Uwaga:** przerywa trwający skan (potem klikamy „Wznów”).*
-
-**Wariant: AGH daje środowisko na osobnej maszynie lub w sieci stanowiska (nie w Dockerze na naszym serwerze).**
-Wtedy MoNet musi widzieć tę sieć bezpośrednio. Uruchamiamy wersję z siecią hosta:
-
-```bash
-docker-compose -p asi -f docker-compose.yml up -d --build
-```
-*W pliku `docker-compose.yml` odkomentowujemy wcześniej linię `network_mode: host` i usuwamy sekcję `ports`. MoNet
-korzysta wtedy bezpośrednio z sieci serwera. Interfejs będzie pod adresem `http://10.1.3.155:8080`.*
+- **Jeśli cel to `127.0.0.1` (usługi wystawione na localhost) albo adres publiczny,** dopisz go w polu
+  „Dozwolone sieci” (np. `127.0.0.0/8`) i zapisz. Inaczej MoNet odrzuci cel już przy dodawaniu.
+- **Jeśli AGH podało limity ruchu,** wpisz je tu jako maksymalne tempo. Żadna konfiguracja skanu ich nie przekroczy
+  (przy zapisie pojawi się komunikat o obcięciu), a skan sprawdza politykę także przy każdym wznowieniu.
+- Opcja „Nie sprawdzaj ścieżek ogólnych” wyłącza zapytania o `/admin`, `/.env`, `/.git/HEAD`, `/server-status`
+  na każdej usłudze HTTP (zostają tylko ścieżki potwierdzające technologię).
 
 ---
 
-## 6. Sprawdź łączność (krótki, pojedynczy test)
+## 5. Cele skanowania (zakładka Cele)
 
-```bash
-docker exec asi-app nmap -sn -n 172.30.0.0/24
-```
-*Wykonuje tylko wykrywanie hostów (bez skanowania portów) w sieci AGH. W wyniku powinny pojawić się linie
-`Host is up` dla kontenerów AGH. Zamiast `172.30.0.0/24` wpisz zakres z kroku 4.*
+1. **Wprowadzenie ręczne:** wpisz zakres z kroku 3 (adresy, CIDR, zakresy `a-b` albo domeny), dodaj tag `agh`
+   i kliknij **Dodaj cele**.
+2. **Import z pliku CSV / JSON:** ten sam efekt dla listy celów od AGH (format opisany na ekranie).
+3. Jeśli lista zawiera cele spoza testu, wyłącz je przełącznikiem „Aktywny”.
 
-Jeśli hostów nie ma, przejdź do „Problemy”, punkt B.
-
----
-
-## 7. Zaloguj się do MoNet i dodaj cele
-
-1. Otwórz w przeglądarce **http://10.1.3.155:8095** (albo `http://100.84.180.79:8095`).
-   *Interfejs MoNet. Konta: `admin / admin123!`, `operator / operator123!`, `analityk / analityk123!`, `obserwator / obserwator123!`.*
-2. Zaloguj się jako **admin**.
-3. Wejdź w **Cele** i w polu „Wprowadzenie ręczne” wpisz zakres z kroku 4 (np. `172.30.0.0/24`). Dodaj tag `agh`.
-   *Mówi MoNet, co wolno skanować. Skaner nigdy nie wyjdzie poza listę celów.*
-4. Jeśli AGH dało listę hostów w pliku CSV/JSON: **Cele → Import z pliku**, tag `agh`.
-   *Import działa tak samo jak wpis ręczny: ta sama walidacja i przetwarzanie.*
-5. Jeśli w celach są jeszcze nasze adresy labu (`10.66.0.0/18`), **wyłącz je przełącznikiem „Aktywny”**.
-   *Dzięki temu skan obejmie wyłącznie środowisko AGH.*
+*Błędne adresy (np. `10.0.0.300`) i odwrócone zakresy są odrzucane z komunikatem; nakładające się cele dają ostrzeżenie.*
 
 ---
 
-## 8. Utwórz konfigurację skanu z portami od AGH
+## 6. Konfiguracja skanu (przycisk „+” albo Skany → Konfiguracje → Nowa konfiguracja)
 
-1. **Skany → Nowa konfiguracja.**
-2. **Nazwa:** np. `AGH test`.
-3. **Tagi celów:** `agh`.
-   *Skan obejmie tylko cele z tym tagiem.*
-4. **Porty do skanowania:** wklej listę dozwolonych portów od AGH (np. `21,22,80,443,8080,8443`).
-   *Pod polem pojawi się zielony znacznik z liczbą portów TCP/UDP. Czerwony oznacza błąd w zapisie (np. port spoza 1–65535).*
-5. **Zapisz.**
+Kreator prowadzi przez pięć kroków:
 
-Dodatkowo (zalecane): **Reguły klasy → Porty zatwierdzone** – wklej tę samą listę i zapisz.
-*Zabezpieczenie: nawet jeśli ktoś włączy opcję automatycznego dopisywania portów, MoNet nie wyjdzie poza listę AGH.*
-
----
-
-## 9. Ustaw limity zgodnie z zasadami bezpiecznego skanowania
-
-W tej samej konfiguracji (przycisk **Edytuj**), sekcja „Intensywność i bezpieczeństwo”:
-
-| Pole | Co oznacza | Bezpieczna wartość na start |
-|---|---|---|
-| Limit pakietów/s (łącznie) | maksymalny ruch nmapa w całym skanie | to, co podało AGH; jeśli nic: `500` |
-| Workery (równolegle) | ile części sieci skanujemy naraz | `2–4` |
-| Zapytań HTTP/s | tempo sprawdzania stron WWW | `10–20` |
-| Timeout hosta (s) | ile maksymalnie czekamy na jeden host | `60` |
-| Ponowienia sond | ile razy ponawiamy pytanie | `1` |
-
-*Jeśli AGH poda np. „maks. 100 pakietów/s”, wpisujemy 100 w limicie pakietów i 5 w zapytaniach HTTP/s.*
-
-Przycisk **„Szacuj czas”** pokazuje, ile mniej więcej potrwa skan przy tych ustawieniach.
-
----
-
-## 10. Zaimportuj sygnatury od AGH
-
-1. **Sygnatury → Importuj z pliku → Wybierz plik** (plik od AGH).
-   *MoNet rozpozna format automatycznie: nasz YAML/JSON, szablony nuclei, Wappalyzer albo CSV.*
-2. Sprawdź podgląd: liczbę sygnatur, konflikty i **ostrzeżenia**.
-   *Ostrzeżenia mówią, co pominięto i dlaczego, np. zapytania POST nie są importowane ze względów bezpieczeństwa.*
-3. Wybierz „pomiń” albo „nadpisz” przy konfliktach i kliknij **Importuj**.
-4. Przy dowolnej sygnaturze: **Edytuj → Testuj na zebranych wynikach**.
-   *Sprawdza sygnaturę na już zebranych odpowiedziach, bez wysyłania ruchu do sieci.*
-
-> Jeśli format od AGH nie zostanie rozpoznany, poproś Claude o dopisanie konwertera (to kilkanaście minut pracy)
-> albo przepisz sygnatury do CSV: `name,type,pattern`.
-
----
-
-## 11. Skan nr 1 i skan nr 2 (wykrywanie zmian)
-
-1. **Skany → przy konfiguracji „AGH test” → Uruchom.**
-   *Rusza skan. Na dashboardzie i w szczegółach skanu widać pasek postępu z procentem, tempo i szacowany czas.*
-2. Obserwuj **Dashboard** i **Usługi**: wyniki pojawiają się **na bieżąco**, po każdej przeskanowanej części sieci.
-3. Po zakończeniu sprawdź wyniki: **Usługi** (lista usług, technologie, flagi), **Hosty**, **Technologie**.
-4. AGH zrobi co najmniej dwa przebiegi skanu (zmieni coś w środowisku między nimi). Po ich zmianie: **Uruchom** ponownie.
-5. **Zmiany:** wybierz skan A (pierwszy) i B (drugi).
-   *Pokazuje nowe, znikające i zmienione usługi oraz hosty. Porównywane są tylko porty i adresy objęte oboma skanami.*
-6. **Skany → zakładka „Niedostępne końcówki”:** hosty, które przestały odpowiadać.
-   *Host, który odpowiada raz tak, raz nie, dostanie stan „niestabilny”.*
-
----
-
-## 12. Porównaj z wynikami referencyjnymi AGH
-
-1. **Import / eksport → Import wyników skanu → Wybierz plik** (wyniki referencyjne AGH). Nazwa: `Referencja AGH`.
-   *MoNet rozpozna XML nmapa, JSON albo CSV. Plik trafia jako osobny „skan z importu”.*
-2. **Zmiany:** A = `Referencja AGH`, B = nasz skan.
-   *Różnice pokażą, co znaleźliśmy więcej, a czego brakuje względem referencji.*
-
----
-
-## 13. DefectDojo (jeśli AGH da testową instancję)
-
-1. **Import / eksport → Ustawienia DefectDojo:** adres instancji, **token API**, nazwa produktu i engagementu → **Zapisz**.
-   *Token jest przechowywany w bazie w postaci zaszyfrowanej.*
-2. **Test połączenia.**
-   *Ma się pojawić „Połączenie działa”.*
-3. **Eksport do DefectDojo:** wybierz skan, minimalną klasę (np. 20), zaznacz „aktualizuj stały test (reimport)” → **Wyślij**.
-   *Wysyła wybrane obserwacje jako findingi informacyjne z dowodami.*
-4. Po kolejnym skanie wyślij ponownie, a w **Historii wysyłek** zobaczysz, ile findingów jest bez zmian, nowych, zamkniętych i przywróconych.
-5. Opcjonalnie w konfiguracji skanu włącz **„po zakończeniu skanu automatycznie aktualizuj test w DefectDojo”**.
-
-Token z instancji demo: zaloguj się na https://demo.defectdojo.org/ → menu użytkownika → **API v2 Key**.
-
----
-
-## 14. Import i eksport danych
-
-- **Eksport:** w szczegółach skanu przyciski **CSV / JSON**, w Usługach eksport inwentarza, w Zmianach eksport różnic.
-- **Import wyników w formacie AGH:** **Import / eksport → Import wyników skanu**. Jeśli ich format się nie wczyta,
-  zapisz komunikat błędu i poproś Claude o dopasowanie.
-
----
-
-## 15. Pokaż role (RBAC)
-
-Wyloguj się i zaloguj kolejno na konta:
-
-| Konto | Co powinno być widać |
+| Krok | Co ustawić |
 |---|---|
-| `obserwator / obserwator123!` | tylko odczyt i eksport; brak przycisków dodawania i edycji |
-| `analityk / analityk123!` | odczyt + edycja (adnotacje, wyniki), bez dodawania i usuwania |
-| `operator / operator123!` | dodawanie, usuwanie, modyfikacja; brak Administracji |
-| `admin / admin123!` | wszystko, w tym użytkownicy, role i dziennik audytu |
+| Podstawy | nazwa (np. `AGH test`), tagi celów: `agh` |
+| Porty | lista dozwolonych portów od AGH, np. `21,22,80,443,8080-8090` (prefiksy `T:`/`U:` dla TCP/UDP) |
+| Intensywność | limit pakietów/s, równoległość, zapytania HTTP/s, timeouty; każde pole ma objaśnienie (i) |
+| Harmonogram i doskaner | tryb Ręczny albo Automatyczny z oknem czasowym (np. 22:00–06:00) i doskanerem dziennym |
+| DefectDojo i zapis | opcjonalny automatyczny eksport po skanie; szacowany czas skanu przy przycisku Zapisz |
 
-*Uprawnienia są sprawdzane na serwerze, nie tylko ukrywane w interfejsie.*
-
----
-
-## 16. Sprzątanie po teście
-
-```bash
-docker network disconnect asi-agh_default asi-app
-```
-*Odłącza MoNet od sieci AGH.*
-
-```bash
-docker-compose -p asi-agh -f ../agh/docker-compose.yml down
-```
-*Zatrzymuje i usuwa kontenery AGH razem z ich siecią. Nasze dane w MoNet zostają.*
+Zalecane: **Reguły klasy → Porty zatwierdzone** – wklej tę samą listę portów. MoNet nie wyjdzie wtedy poza nią,
+nawet przy automatycznym dopisywaniu portów.
 
 ---
 
-## Problemy i rozwiązania
+## 7. Sygnatury od AGH (zakładka Sygnatury)
 
-**A. „port is already allocated” przy uruchamianiu AGH (krok 3)**
-Jakiś port z ich pliku jest zajęty na serwerze. W `../agh/docker-compose.yml` zmień lewą liczbę w `ports:`, np.
-`"80:80"` na `"18080:80"`, i uruchom krok 3 ponownie. *Lewa liczba to port na serwerze, prawa w kontenerze. Do
-skanowania przez MoNet wystawianie portów nie jest potrzebne, więc sekcję `ports:` można też usunąć.*
+1. **Importuj z pliku** i wybierz plik od AGH. Format jest rozpoznawany automatycznie: MoNet YAML/JSON, szablony
+   nuclei, Wappalyzer, CSV.
+2. Sprawdź podgląd (liczba sygnatur, konflikty, ostrzeżenia) i zatwierdź.
+3. Przy sygnaturze: **Testuj na zebranych wynikach** – sprawdza ją bez wysyłania ruchu do sieci.
 
-**B. MoNet nie widzi hostów AGH (krok 6)**
-- sprawdź, czy wykonałeś krok 5 (`docker network connect …`),
-- sprawdź, czy sieć z kroku 4 ma poprawną nazwę,
-- jeśli sieć AGH ma ustawienie `internal: true`, to nie przeszkadza: MoNet jest wtedy w tej samej sieci.
+Własną sygnaturę najszybciej utworzyć z nierozpoznanej usługi: **Usługi → szczegóły usługi → Naucz system**.
+*Sygnatury tylko odczytują odpowiedzi; ścieżki przekazujące dane logowania są odrzucane.*
 
-**C. Skan stoi na „wstrzymany”**
-Kliknij **Wznów** przy skanie. *Skan zatrzymuje się po końcu okna czasowego albo po restarcie aplikacji
-i kontynuuje od miejsca przerwania.*
+---
 
-**D. Czarny ekran albo stary wygląd strony**
-Odśwież z pominięciem pamięci podręcznej: **Ctrl+Shift+R** (Mac: **Cmd+Shift+R**).
+## 8. Skan nr 1 i skan nr 2 (wykrywanie zmian)
 
-**E. Nie mogę się zalogować (zbyt wiele prób)**
-Po 10 nieudanych próbach MoNet blokuje logowanie z danego adresu na 5 minut. Odczekaj chwilę.
+1. **Skany → Konfiguracje → Uruchom.** Postęp, tempo i szacowany czas widać na dashboardzie i w historii skanów.
+   Wyniki trafiają do bazy po każdej podgrupie adresów, więc **Usługi** i **Hosty** wypełniają się w trakcie.
+2. Po zmianach w środowisku AGH uruchom skan ponownie.
+3. **Zmiany:** wybierz regułę, skan A i skan B. Widać nowe, znikające, zmienione (pole po polu) i powracające
+   usługi oraz hosty. Oś czasu pokazuje różnice dla kolejnych skanów reguły. Różnice można pobrać jako CSV/JSON.
+4. **Hosty** i **Usługi** mają trzy widoki z licznikami:
 
-**F. Gdzie są logi aplikacji?**
+| Widok | Znaczenie |
+|---|---|
+| Aktywne | host widziany w skanie w ciągu ostatnich 24 godzin |
+| Niestabilne | widziany w ciągu 24 godzin, ale nie w skanach nocnych (22:00–06:00), np. stacja wyłączana na noc |
+| Niedostępne | niewidziany dłużej niż 48 godzin albo nigdy; doskaner sprawdza takie adresy w dzień po kolei |
+
+*Skan, który nie zmieści się w oknie czasowym, zatrzymuje się i wznawia od miejsca przerwania w kolejnym oknie
+(także po restarcie kontenera).*
+
+---
+
+## 9. Edycja znalezisk
+
+1. **Usługi → kliknij usługę → Edytuj wynik:** popraw produkt, wersję, technologie, klasę albo notatkę i zapisz.
+   Poprawka obowiązuje także w **kolejnych skanach**. Przestaje obowiązywać sama, gdy skaner zobaczy inną wersję
+   (prawdziwa zmiana pozostaje widoczna w porównaniu).
+2. **Cofnij poprawkę** przywraca wynik skanera dokładnie w takiej postaci, w jakiej był.
+3. **Adnotacje → fałszywy alarm:** usługa zostaje w bazie i historii, ale nie jest liczona na dashboardzie
+   i nie trafia do DefectDojo.
+
+---
+
+## 10. Import i eksport danych (zakładka Import / eksport)
+
+- **Import wyników skanu:** XML nmapa, JSON albo CSV (np. wyniki referencyjne AGH). Plik trafia jako osobny skan,
+  który można porównać z własnym skanem w zakładce Zmiany.
+- **Eksport:** cele, inwentarz usług, wyniki skanu i różnice między skanami jako **CSV** albo **JSON**.
+- **Dziennik logów** (Administracja): pobieranie JSON/CSV/TXT dla dnia albo całości.
+
+---
+
+## 11. DefectDojo
+
+1. **Import / eksport → Ustawienia DefectDojo:** adres instancji od AGH, token API, produkt i engagement → **Zapisz**,
+   potem **Test połączenia**. Token jest przechowywany w bazie w postaci zaszyfrowanej.
+2. **Eksport do DefectDojo:** wybierz skan i minimalną klasę, zaznacz reimport do stałego testu → **Wyślij**.
+   Obserwacje trafiają jako findingi informacyjne z dowodami.
+3. Po kolejnym skanie **Historia Importowania do DefectDojo** pokazuje findingi nowe, zamknięte, przywrócone
+   i bez zmian. Nieudaną wysyłkę można ponowić przyciskiem **Ponów**.
+4. Opcjonalnie w konfiguracji skanu: automatyczny reimport po każdym skanie.
+
+---
+
+## 12. Role (RBAC)
+
+Konta demo (gdy w `.env` jest `ASI_DEMO_USERS=1`): `operator / operator123!`, `analityk / analityk123!`,
+`obserwator / obserwator123!`. Można też utworzyć konta w **Administracja → Użytkownicy**.
+
+| Rola | Uprawnienia |
+|---|---|
+| Obserwator | tylko odczyt i eksport |
+| Analityk | odczyt i modyfikacja istniejących danych (edycja wyników, adnotacje, klasyfikacja technologii), eksport; bez dodawania, usuwania i wysyłki do DefectDojo |
+| Operator | dodawanie, usuwanie i modyfikacja (cele, konfiguracje, sygnatury, skany), wysyłka do DefectDojo; bez Administracji |
+| Administrator | wszystko, w tym użytkownicy, role, polityka skanera, ustawienia DefectDojo i dziennik logów |
+
+*Uprawnienia są sprawdzane po stronie serwera (API), nie tylko ukrywane w interfejsie. Każdy użytkownik zmienia
+własne hasło w menu konta (awatar → Zmień hasło).*
+
+---
+
+## 13. Bezpieczeństwo działania skanera
+
+- Skanowane są tylko adresy z listy celów, w sieciach dozwolonych przez politykę; wykluczenia są respektowane.
+- Sondy HTTP to wyłącznie `GET` (bez logowania i bez payloadów); przekierowania poza zakres są tylko zapisywane.
+- Limity: pakiety/s nmapa, zapytania HTTP/s, timeout hosta, ponowienia, równoległość.
+- Skaner przedstawia się nagłówkiem `User-Agent: MoNet-DiscoveryScanner/1.0`.
+- Wykrywanie soft-404: serwer odpowiadający „200” na każdą ścieżkę nie generuje fałszywych trafień.
+
+---
+
+## 14. Sprzątanie po teście
+
 ```bash
-docker logs --tail 50 asi-app
+docker network disconnect <sieć_AGH> asi-app
 ```
-*Pokazuje ostatnie 50 linii z dziennika MoNet (start skanu, zatrzymanie, błędy).*
+*Odłącza MoNet od sieci laboratorium (wariant A).*
+
+```bash
+docker compose down
+```
+*Zatrzymuje MoNet. Dane zostają w wolumenie `asi-data`; `docker compose down -v` usuwa je razem z wolumenem.*
+
+---
+
+## Rozwiązywanie problemów
+
+| Objaw | Rozwiązanie |
+|---|---|
+| `docker compose up` kończy się błędem „ustaw ASI_ADMIN_PASSWORD” | brak pliku `.env` albo wpisu; wróć do kroku 2 |
+| Cel odrzucony: „poza sieciami dozwolonymi przez administratora” | dopisz sieć w Administracja → Polityka Skanera (krok 4) |
+| MoNet nie widzi hostów AGH | sprawdź `docker network connect` (wariant A) albo `network_mode: host` (wariant B) i test z kroku 3 |
+| Skan ma stan „wstrzymany” | skończyło się okno czasowe; skan wznowi się w kolejnym oknie albo po kliknięciu Uruchom |
+| Logowanie zablokowane | po 10 nieudanych próbach dany login jest blokowany na 5 minut |
+| Stary wygląd strony po aktualizacji | odśwież z pominięciem pamięci podręcznej: Ctrl+Shift+R |
+| Dziennik aplikacji | `docker logs --tail 50 asi-app` |
+
+Dokumentacja szczegółowa: `README.md`, `docs/ARCHITEKTURA.md`, `docs/FORMATY.md`, `docs/DEFECTDOJO.md`,
+wyniki testów: `docs/POMIARY.md`, `docs/TEST_LAB_AGH.md`.
