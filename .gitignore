@@ -1,0 +1,13 @@
+/data/
+/bin/
+*.db
+*.db-*
+/web/node_modules/
+/web/dist/
+/internal/api/webdist/*
+!/internal/api/webdist/.keep
+.env
+master.key
+/third_party/defectdojo/.env
+/logs/autopilot.log
+/STOP_AUTOPILOT

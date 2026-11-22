@@ -1,0 +1,17 @@
+# Kopia stacku AGH docker-compose-custom-network.yml (obrazy i konfiguracja usług bez zmian).
+# Różnice: nazwa projektu asi-agh-*, brak portów na hoście, usługi publikowane przez AGH dostają adres
+# w izolowanej sieci labu asi-lab (10.66.4.0/24). Porty wewnętrzne kontenerów = porty skanowane.
+name: asi-agh-custom
+services:
+  custom-api:   { image: kennethreitz/httpbin, networks: { backend: {}, lab: { ipv4_address: 10.66.4.11 } } }        # AGH: 8888->80
+  postgres:
+    image: postgres:16
+    environment: { POSTGRES_DB: appdb, POSTGRES_USER: appuser, POSTGRES_PASSWORD: StrongPassword123 }
+    networks: { backend: {}, lab: { ipv4_address: 10.66.4.12 } }                                                       # AGH: 15432->5432
+  rabbitmq:     { image: "rabbitmq:3-management", networks: { backend: {}, lab: { ipv4_address: 10.66.4.13 } } }       # AGH: 5673->5672, 15673->15672
+  gitea:        { image: "gitea/gitea:latest", networks: { frontend: {}, lab: { ipv4_address: 10.66.4.14 } } }         # AGH: 3001->3000, 2223->22
+  flask-app:    { image: "nginx:alpine", networks: { frontend: {}, backend: {}, lab: { ipv4_address: 10.66.4.15 } } }  # AGH: 8787->80
+networks:
+  frontend: {}
+  backend: {}
+  lab: { external: true, name: asi-lab }

@@ -1,0 +1,229 @@
+# Kopia stacku AGH docker-compose-modern-proxy.yml (Traefik -> Toxiproxy -> WordPress). Różnice: nazwa asi-agh-*,
+# brak portów na hoście, traefik i toxiproxy w sieci asi-lab. Zmienne: plik proxy.env.
+name: asi-agh-proxy
+
+services:
+
+  traefik:
+    image: traefik:v3.1
+
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+
+
+    volumes:
+      - /opt/hacknation/projekt/piotr/lab/traefik:/etc/traefik/dynamic:ro
+
+    depends_on:
+      - toxiproxy
+
+    networks:
+      frontend: {}
+      backend: {}
+      lab: { ipv4_address: 10.66.4.41 }
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/toxiproxy-cli",
+          "list"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+    networks:
+      backend: {}
+      lab: { ipv4_address: 10.66.4.42 }
+
+  toxiproxy-init:
+    image: curlimages/curl:8.10.1
+    restart: "no"
+
+    depends_on:
+      toxiproxy:
+        condition: service_healthy
+      wordpress:
+        condition: service_started
+
+    entrypoint: ["sh", "-ec"]
+    command:
+      - |
+        echo "Waiting for Toxiproxy API..."
+
+        until curl -fs http://toxiproxy:8474/version >/dev/null
+        do
+          sleep 2
+        done
+
+        echo "Resetting proxy configuration..."
+
+        # Recreate the proxy on every start. This keeps the result predictable
+        # when .env changes and prevents old toxics from being left behind.
+        curl -fsS -X DELETE \
+          http://toxiproxy:8474/proxies/${PROXY_NAME} \
+          >/dev/null 2>&1 || true
+
+        curl -fsS \
+          -X POST \
+          http://toxiproxy:8474/proxies \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"name\":\"${PROXY_NAME}\",
+            \"listen\":\"${PROXY_LISTEN}\",
+            \"upstream\":\"${PROXY_UPSTREAM}\"
+          }"
+
+        if [ "${ENABLE_LATENCY}" = "true" ]; then
+          curl -fsS \
+            -X POST \
+            http://toxiproxy:8474/proxies/${PROXY_NAME}/toxics \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"name\":\"latency_downstream\",
+              \"type\":\"latency\",
+              \"stream\":\"downstream\",
+              \"attributes\":{
+                \"latency\":${LATENCY_MS},
+                \"jitter\":${LATENCY_JITTER}
+              }
+            }" || true
+        fi
+
+        if [ "${ENABLE_BANDWIDTH}" = "true" ]; then
+          curl -fsS \
+            -X POST \
+            http://toxiproxy:8474/proxies/${PROXY_NAME}/toxics \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"name\":\"bandwidth_downstream\",
+              \"type\":\"bandwidth\",
+              \"stream\":\"downstream\",
+              \"attributes\":{
+                \"rate\":${BANDWIDTH_KBPS}
+              }
+            }" || true
+        fi
+
+        if [ "${ENABLE_TIMEOUT}" = "true" ]; then
+          curl -fsS \
+            -X POST \
+            http://toxiproxy:8474/proxies/${PROXY_NAME}/toxics \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"name\":\"timeout_downstream\",
+              \"type\":\"timeout\",
+              \"stream\":\"downstream\",
+              \"attributes\":{
+                \"timeout\":${TIMEOUT_MS}
+              }
+            }" || true
+        fi
+
+        if [ "${ENABLE_SLOW_CLOSE}" = "true" ]; then
+          curl -fsS \
+            -X POST \
+            http://toxiproxy:8474/proxies/${PROXY_NAME}/toxics \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"name\":\"slowclose_downstream\",
+              \"type\":\"slow_close\",
+              \"stream\":\"downstream\",
+              \"attributes\":{
+                \"delay\":${SLOW_CLOSE_MS}
+              }
+            }" || true
+        fi
+
+        echo "Toxiproxy configuration complete."
+
+    networks:
+      - backend
+
+  wordpress:
+    image: wordpress:latest
+
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+    volumes:
+      - wordpress_data:/var/www/html
+
+    networks:
+      - backend
+
+  mariadb:
+    image: mariadb:11
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${WORDPRESS_DB_NAME}
+      MYSQL_USER: ${WORDPRESS_DB_USER}
+      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -uroot -p$$MYSQL_ROOT_PASSWORD"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+
+    volumes:
+      - redis_data:/data
+
+    networks:
+      - backend
+
+volumes:
+  wordpress_data:
+  mariadb_data:
+  redis_data:
+
+networks:
+  frontend:
+    driver: bridge
+
+  backend:
+    driver: bridge
+
+  lab:
+    external: true
+    name: asi-lab

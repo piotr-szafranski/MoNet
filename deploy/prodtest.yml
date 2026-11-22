@@ -1,0 +1,9 @@
+# Test „od zera”: obraz produkcyjny z czystymi danymi (jak u jury). docker-compose -p asi-prodtest -f deploy/prodtest.yml up -d
+name: asi-prodtest
+services:
+  asi:
+    image: asi-prod:test
+    ports: ["8097:8080"]
+    environment:
+      ASI_MASTER_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+      ASI_ALLOW_KEYGEN: "0"

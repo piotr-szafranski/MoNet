@@ -1,0 +1,41 @@
+# Lab testowy MoNet: odizolowana sieć 10.66.0.0/18 (16 384 adresy, internal = bez wyjścia na świat).
+# Uruchomienie: docker-compose -p asi-lab -f lab/docker-compose.yml up -d --build
+name: asi-lab
+networks:
+  lab:
+    name: asi-lab
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.66.0.0/18
+          ip_range: 10.66.0.0/24      # adresy przydzielane przez Dockera; symulator używa 10.66.8.0+
+          gateway: 10.66.0.1
+services:
+  sim:
+    container_name: asi-lab-sim
+    build: { context: .., dockerfile: lab/Dockerfile.sim }
+    cap_add: [NET_ADMIN]
+    environment:
+      SIM_COUNT: "1500"
+      SIM_BASE: "10.66.8.0"
+      SIM_SPAN: "14336"
+      SIM_PHASE_MIN: "5"
+      SIM_DAY_FROM: "1"
+      SIM_DAY_TO: "6"
+    networks: { lab: { ipv4_address: 10.66.0.5 } }
+    restart: unless-stopped
+  nginx:
+    container_name: asi-lab-nginx
+    image: nginx:1.27-alpine
+    networks: { lab: { ipv4_address: 10.66.0.10 } }
+    restart: unless-stopped
+  httpd:
+    container_name: asi-lab-httpd
+    image: httpd:2.4-alpine
+    networks: { lab: { ipv4_address: 10.66.0.11 } }
+    restart: unless-stopped
+  valkey:
+    container_name: asi-lab-valkey
+    image: valkey/valkey:8-alpine
+    networks: { lab: { ipv4_address: 10.66.0.12 } }
+    restart: unless-stopped

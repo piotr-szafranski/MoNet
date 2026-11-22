@@ -1,0 +1,527 @@
+# Wbudowane sygnatury MoNet. Tylko bezpieczna detekcja: dopasowania do odpowiedzi i GET na ścieżki (bez logowania).
+# Pewność = suma wag dopasowanych matcherów (max 100%). Grupa (?P<version>...) wyciąga wersję.
+
+# ---------- CMS ----------
+- id: wordpress
+  name: WordPress
+  category: cms
+  interest: 15
+  matchers:
+    - {type: body, regex: '/wp-(content|includes)/', weight: 0.6}
+    - {type: body, regex: '<meta name="generator" content="WordPress ?(?P<version>[\d.]+)?', weight: 0.9}
+    - {type: header, name: link, regex: 'wp-json', weight: 0.6}
+    - {type: cookie, name: '^wordpress_|^wp-settings', weight: 0.6}
+    - {type: path, path: /wp-login.php, status: [200], regex: 'wp-submit|user_login', weight: 0.7}
+    - {type: body, regex: 'wp-admin/css/install[^"'']*\?ver=(?P<version>\d+\.\d+(\.\d+)?)', weight: 0.5}  # strona instalacji (lab AGH vulnerable)
+- id: joomla
+  name: Joomla
+  category: cms
+  interest: 15
+  matchers:
+    - {type: body, regex: '<meta name="generator" content="Joomla!?(?: - Open Source Content Management)?', weight: 0.9}
+    - {type: body, regex: '/media/(jui|system)/js/|/components/com_', weight: 0.5}
+    - {type: path, path: /administrator/, status: [200], regex: 'Joomla|mod-login', weight: 0.7}
+    - {type: header, name: x-content-encoded-by, regex: 'Joomla', weight: 0.8}
+- id: drupal
+  name: Drupal
+  category: cms
+  interest: 15
+  matchers:
+    - {type: header, name: x-generator, regex: 'Drupal ?(?P<version>\d+)?', weight: 0.9}
+    - {type: header, name: x-drupal-cache, weight: 0.8}
+    - {type: header, name: x-drupal-dynamic-cache, weight: 0.8}
+    - {type: body, regex: '<meta name="Generator" content="Drupal ?(?P<version>\d+)?', weight: 0.9}
+    - {type: body, regex: '/sites/(default|all)/(files|modules|themes)/|drupalSettings', weight: 0.5}
+- id: typo3
+  name: TYPO3
+  category: cms
+  interest: 10
+  matchers:
+    - {type: body, regex: '<meta name="generator" content="TYPO3 CMS', weight: 0.9}
+    - {type: body, regex: '/typo3(conf|temp)/', weight: 0.5}
+- id: moodle
+  name: Moodle
+  category: cms
+  interest: 10
+  matchers:
+    - {type: cookie, name: '^MoodleSession', weight: 0.9}
+    - {type: body, regex: 'moodle-|M\.cfg = |/theme/styles\.php', weight: 0.5}
+- id: magento
+  name: Magento
+  category: cms
+  interest: 10
+  matchers:
+    - {type: body, regex: 'Mage\.Cookies|/static/version\d+/frontend/|mage/cookies', weight: 0.7}
+    - {type: cookie, name: '^frontend$|^mage-', weight: 0.5}
+- id: mediawiki
+  name: MediaWiki
+  category: cms
+  interest: 5
+  matchers:
+    - {type: body, regex: '<meta name="generator" content="MediaWiki (?P<version>[\d.]+)', weight: 0.9}
+    - {type: body, regex: 'mediawiki|/load\.php\?lang=', weight: 0.4}
+
+# ---------- frameworki / języki ----------
+- id: php
+  name: PHP
+  category: language
+  interest: 3
+  matchers:
+    - {type: header, name: x-powered-by, regex: 'PHP/?(?P<version>[\d.]+)?', weight: 0.9}
+    - {type: cookie, name: '^PHPSESSID$', weight: 0.6}
+- id: aspnet
+  name: ASP.NET
+  category: framework
+  interest: 3
+  matchers:
+    - {type: header, name: x-aspnet-version, regex: '(?P<version>[\d.]+)', weight: 0.9}
+    - {type: header, name: x-powered-by, regex: 'ASP\.NET', weight: 0.8}
+    - {type: cookie, name: '^ASP\.NET_SessionId|^\.ASPXAUTH', weight: 0.7}
+    - {type: body, regex: '__VIEWSTATE', weight: 0.5}
+- id: express
+  name: Express (Node.js)
+  category: framework
+  interest: 3
+  matchers:
+    - {type: header, name: x-powered-by, regex: '^Express', weight: 0.9}
+    - {type: cookie, name: '^connect\.sid$', weight: 0.6}
+- id: django
+  name: Django
+  category: framework
+  interest: 5
+  matchers:
+    - {type: cookie, name: '^csrftoken$|^django_language$', weight: 0.6}
+    - {type: body, regex: 'csrfmiddlewaretoken', weight: 0.7}
+    - {type: path, path: /admin/login/, status: [200], regex: 'Django administration|django', weight: 0.8}
+- id: flask
+  name: Flask / Werkzeug
+  category: framework
+  interest: 5
+  matchers:
+    - {type: header, name: server, regex: 'Werkzeug/?(?P<version>[\d.]+)?', weight: 0.9}
+- id: laravel
+  name: Laravel
+  category: framework
+  interest: 5
+  matchers:
+    - {type: cookie, name: '^laravel_session$|^XSRF-TOKEN$', weight: 0.8}
+- id: rails
+  name: Ruby on Rails
+  category: framework
+  interest: 3
+  matchers:
+    - {type: header, name: x-runtime, regex: '^[\d.]+$', weight: 0.4}
+    - {type: cookie, name: '^_[a-z0-9_]+_session$', weight: 0.4}
+    - {type: body, regex: 'csrf-param" content="authenticity_token', weight: 0.8}
+- id: spring
+  name: Spring Boot
+  category: framework
+  interest: 10
+  matchers:
+    - {type: body, regex: 'Whitelabel Error Page', weight: 0.9}
+    - {type: path, path: /actuator/health, status: [200], regex: '"status"\s*:\s*"(UP|DOWN)"', weight: 0.9}
+
+# ---------- serwery WWW / aplikacyjne / proxy ----------
+- id: nginx
+  name: nginx
+  category: server
+  interest: 1
+  matchers:
+    - {type: header, name: server, regex: '^nginx(?:/(?P<version>[\d.]+))?', weight: 1.0}
+    - {type: banner, regex: 'nginx(?: (?P<version>[\d.]+))?', weight: 0.8}
+- id: apache-httpd
+  name: Apache HTTP Server
+  category: server
+  interest: 1
+  matchers:
+    - {type: header, name: server, regex: '^Apache(?:/(?P<version>[\d.]+))?', weight: 1.0}
+    - {type: banner, regex: 'Apache httpd(?: (?P<version>[\d.]+))?', weight: 0.8}
+- id: iis
+  name: Microsoft IIS
+  category: server
+  interest: 3
+  matchers:
+    - {type: header, name: server, regex: 'Microsoft-IIS/?(?P<version>[\d.]+)?', weight: 1.0}
+- id: lighttpd
+  name: lighttpd
+  category: server
+  interest: 2
+  matchers:
+    - {type: header, name: server, regex: 'lighttpd/?(?P<version>[\d.]+)?', weight: 1.0}
+- id: caddy
+  name: Caddy
+  category: server
+  interest: 1
+  matchers:
+    - {type: header, name: server, regex: '^Caddy', weight: 1.0}
+- id: tomcat
+  name: Apache Tomcat
+  category: appserver
+  interest: 8
+  matchers:
+    - {type: body, regex: 'Apache Tomcat/?(?P<version>[\d.]+)?', weight: 0.9}
+    - {type: title, regex: 'Apache Tomcat/?(?P<version>[\d.]+)?', weight: 0.9}
+    - {type: banner, regex: 'Tomcat|Coyote', weight: 0.6}
+- id: jetty
+  name: Eclipse Jetty
+  category: appserver
+  interest: 3
+  matchers:
+    - {type: header, name: server, regex: 'Jetty\(?(?P<version>[\d.]+)?', weight: 1.0}
+- id: gunicorn
+  name: Gunicorn
+  category: appserver
+  interest: 2
+  matchers:
+    - {type: header, name: server, regex: 'gunicorn/?(?P<version>[\d.]+)?', weight: 1.0}
+- id: haproxy
+  name: HAProxy / load balancer
+  category: proxy
+  interest: 2
+  matchers:
+    - {type: banner, regex: 'HAProxy', weight: 0.8}
+    - {type: title, regex: 'Statistics Report for HAProxy', weight: 0.9}
+- id: cloudflare
+  name: Cloudflare
+  category: proxy
+  interest: 1
+  matchers:
+    - {type: header, name: server, regex: '^cloudflare', weight: 0.9}
+    - {type: header, name: cf-ray, weight: 0.8}
+
+# ---------- panele administracyjne / devops ----------
+- id: admin-path
+  name: Panel administracyjny (ścieżka /admin)
+  category: admin-panel
+  interest: 25
+  matchers:
+    - {type: path, path: /admin, status: [200, 401, 403], regex: 'login|password|hasło|admin|sign in|zaloguj', weight: 0.7}
+    - {type: path, path: /admin/, status: [200, 401, 403], regex: 'login|password|hasło|admin|sign in|zaloguj', weight: 0.7}
+- id: login-form
+  name: Formularz logowania
+  category: admin-panel
+  interest: 10
+  matchers:
+    - {type: body, regex: '<input[^>]+type=["'']?password', weight: 0.8}
+    - {type: path, path: /login, status: [200], regex: '<input[^>]+type=["'']?password', weight: 0.6}
+- id: basic-auth
+  name: Uwierzytelnianie HTTP Basic/Digest
+  category: admin-panel
+  interest: 10
+  matchers:
+    - {type: header, name: www-authenticate, regex: '^(Basic|Digest)', weight: 1.0}
+- id: phpmyadmin
+  name: phpMyAdmin
+  category: admin-panel
+  interest: 30
+  matchers:
+    - {type: title, regex: 'phpMyAdmin', weight: 0.9}
+    - {type: cookie, name: '^pmaCookieVer|^phpMyAdmin', weight: 0.8}
+    - {type: path, path: /phpmyadmin/, status: [200], regex: 'phpMyAdmin', weight: 0.9}
+- id: jenkins
+  name: Jenkins
+  category: devops
+  interest: 30
+  matchers:
+    - {type: header, name: x-jenkins, regex: '(?P<version>[\d.]+)', weight: 1.0}
+    - {type: header, name: x-hudson, weight: 0.8}
+    - {type: title, regex: 'Jenkins|Sign in \[Jenkins\]', weight: 0.6}
+- id: grafana
+  name: Grafana
+  category: devops
+  interest: 20
+  matchers:
+    - {type: title, regex: '^Grafana', weight: 0.8}
+    - {type: body, regex: 'grafana-app|"buildInfo":\{[^}]*"version":"(?P<version>[\d.]+)', weight: 0.7}
+    - {type: path, path: /api/health, status: [200], regex: '"database"\s*:\s*"ok".*"version"\s*:\s*"(?P<version>[\d.]+)', weight: 0.9}
+- id: kibana
+  name: Kibana
+  category: devops
+  interest: 20
+  matchers:
+    - {type: header, name: kbn-name, weight: 1.0}
+    - {type: header, name: kbn-version, regex: '(?P<version>[\d.]+)', weight: 1.0}
+    - {type: title, regex: '^Kibana|Elastic$', weight: 0.6}
+- id: gitlab
+  name: GitLab
+  category: devops
+  interest: 20
+  matchers:
+    - {type: body, regex: 'gon\.gitlab_url|content="GitLab"', weight: 0.9}
+    - {type: cookie, name: '^_gitlab_session$', weight: 0.9}
+- id: prometheus
+  name: Prometheus
+  category: devops
+  interest: 15
+  matchers:
+    - {type: title, regex: 'Prometheus Time Series', weight: 0.9}
+    - {type: path, path: /metrics, status: [200], regex: '^# HELP |# TYPE \w+ (counter|gauge)', weight: 0.6}
+- id: tomcat-manager
+  name: Tomcat Manager
+  category: admin-panel
+  interest: 30
+  matchers:
+    - {type: path, path: /manager/html, status: [401, 403], regex: 'Tomcat|manager', weight: 0.9}
+- id: webmin
+  name: Webmin
+  category: admin-panel
+  interest: 25
+  matchers:
+    - {type: title, regex: 'Webmin', weight: 0.8}
+    - {type: header, name: server, regex: 'MiniServ/?(?P<version>[\d.]+)?', weight: 0.9}
+- id: elasticsearch
+  name: Elasticsearch (API bez uwierzytelnienia)
+  category: database
+  interest: 35
+  matchers:
+    - {type: body, regex: '"cluster_name"\s*:.*"tagline"\s*:\s*"You Know, for Search"', weight: 1.0}
+    - {type: body, regex: '"number"\s*:\s*"(?P<version>[\d.]+)"', weight: 0.2}
+
+# ---------- urządzenia IoT / sieciowe ----------
+- id: hikvision
+  name: Kamera Hikvision
+  category: iot
+  interest: 30
+  matchers:
+    - {type: header, name: server, regex: 'App-webs|DNVRS-Webs|Hikvision-Webs', weight: 0.9}
+    - {type: body, regex: 'doc/page/login\.asp|Hikvision', weight: 0.6}
+- id: goahead
+  name: GoAhead-Webs (urządzenie wbudowane)
+  category: iot
+  interest: 25
+  matchers:
+    - {type: header, name: server, regex: 'GoAhead', weight: 1.0}
+- id: boa
+  name: Boa / mini_httpd (urządzenie wbudowane)
+  category: iot
+  interest: 20
+  matchers:
+    - {type: header, name: server, regex: '^Boa/|mini_httpd|uhttpd|RomPager|thttpd', weight: 1.0}
+- id: mikrotik
+  name: MikroTik RouterOS
+  category: iot
+  interest: 25
+  matchers:
+    - {type: title, regex: 'RouterOS|mikrotik', weight: 0.9}
+    - {type: body, regex: 'RouterOS router configuration page', weight: 0.9}
+- id: printer
+  name: Drukarka sieciowa
+  category: iot
+  interest: 15
+  matchers:
+    - {type: header, name: server, regex: 'HP HTTP Server|Virata-EmWeb|CUPS|KM-MFP|EPSON', weight: 0.9}
+    - {type: title, regex: 'LaserJet|OfficeJet|Printer|Drukarka|EPSON|Brother|Kyocera|Lexmark', weight: 0.6}
+    - {type: port, ports: [9100, 631], weight: 0.3}
+- id: ip-camera
+  name: Kamera IP / rejestrator (ogólna)
+  category: iot
+  interest: 25
+  matchers:
+    - {type: title, regex: 'IP ?Camera|Network Camera|NVR|DVR|Kamera', weight: 0.7}
+    - {type: title, regex: 'Web ?Viewer', weight: 0.3}  # sam „Web Viewer” to słaba przesłanka (też panele urządzeń GoAhead)
+    - {type: service, regex: '^rtsp', weight: 0.6}
+- id: ubiquiti
+  name: Ubiquiti UniFi / airOS
+  category: iot
+  interest: 20
+  matchers:
+    - {type: title, regex: 'UniFi|airOS', weight: 0.9}
+
+# ---------- środowiska testowe / staging ----------
+- id: staging-hostname
+  name: Środowisko testowe (nazwa hosta)
+  category: staging
+  interest: 25
+  matchers:
+    - {type: hostname, regex: '(^|[.-])(dev|test|tst|stage|staging|stg|uat|qa|preprod|pre-prod|sandbox|demo)\d*([.-]|$)', weight: 0.9}
+    - {type: cert, regex: '(^|[.=\s-])(dev|test|staging|stg|uat|qa|preprod)\d*\.', weight: 0.6}
+- id: staging-content
+  name: Środowisko testowe (treść)
+  category: staging
+  interest: 20
+  matchers:
+    - {type: title, regex: '\b(staging|test|testing|dev|development|uat|preprod|środowisko testowe)\b', weight: 0.7}
+    - {type: header, name: x-environment, regex: 'dev|test|stag|uat|qa', weight: 0.9}
+    - {type: header, name: x-env, regex: 'dev|test|stag|uat|qa', weight: 0.9}
+    - {type: body, regex: 'debug ?toolbar|Whoops!|Traceback \(most recent call last\)|DEBUG = True|phpinfo\(\)', weight: 0.8}
+
+# ---------- ciekawe artefakty ----------
+- id: directory-listing
+  name: Listowanie katalogów
+  category: interesting
+  interest: 20
+  matchers:
+    - {type: title, regex: '^Index of /', weight: 1.0}
+    - {type: body, regex: '<title>Directory listing for', weight: 1.0}
+- id: git-exposed
+  name: Odsłonięte repozytorium .git
+  category: interesting
+  interest: 40
+  matchers:
+    - {type: path, path: /.git/HEAD, status: [200], regex: '^ref: refs/', weight: 1.0}
+- id: env-exposed
+  name: Odsłonięty plik .env
+  category: interesting
+  interest: 40
+  matchers:
+    - {type: path, path: /.env, status: [200], regex: '^[A-Z_]+=', weight: 1.0}
+- id: server-status
+  name: Apache server-status
+  category: interesting
+  interest: 20
+  matchers:
+    - {type: path, path: /server-status, status: [200], regex: 'Apache Server Status', weight: 1.0}
+- id: swagger
+  name: Dokumentacja API (Swagger/OpenAPI)
+  category: interesting
+  interest: 15
+  matchers:
+    - {type: title, regex: 'Swagger UI', weight: 0.9}
+    - {type: path, path: /swagger-ui.html, status: [200], regex: 'swagger', weight: 0.8}
+    - {type: path, path: /v2/api-docs, status: [200], regex: '"swagger"', weight: 0.8}
+- id: version-endpoint
+  name: Endpoint wersji
+  category: interesting
+  interest: 10
+  matchers:
+    - {type: path, path: /version, status: [200], regex: '"?version"?\s*[:=]\s*"?(?P<version>[\w.\-]+)', weight: 0.8}
+- id: debug-cookie
+  name: Ciasteczko debugowe
+  category: interesting
+  interest: 15
+  matchers:
+    - {type: cookie, name: 'debug|XDEBUG_SESSION|^_profiler', weight: 0.9}
+- id: default-page
+  name: Domyślna strona serwera
+  category: interesting
+  interest: 5
+  matchers:
+    - {type: title, regex: 'Welcome to nginx|Apache2 (Ubuntu|Debian) Default Page|IIS Windows Server|Test Page for the Apache', weight: 1.0}
+
+# ---------- usługi nie-HTTP (z banera nmapa) ----------
+- id: openssh
+  name: OpenSSH
+  category: server
+  interest: 2
+  matchers:
+    - {type: banner, regex: 'OpenSSH (?P<version>[\w.]+)', weight: 1.0}
+- id: telnet
+  name: Telnet (nieszyfrowany dostęp)
+  category: interesting
+  interest: 30
+  matchers:
+    - {type: service, regex: '^telnet$', weight: 1.0}
+- id: ftp
+  name: Serwer FTP
+  category: server
+  interest: 10
+  matchers:
+    - {type: service, regex: '^ftp$', weight: 0.8}
+    - {type: banner, regex: 'vsftpd|ProFTPD|FileZilla|Pure-FTPd', weight: 0.9}
+- id: redis
+  name: Redis / Valkey
+  category: database
+  interest: 30
+  matchers:
+    - {type: service, regex: '^redis', weight: 0.9}
+    - {type: banner, regex: 'Redis|Valkey', weight: 0.9}
+- id: mysql
+  name: MySQL / MariaDB
+  category: database
+  interest: 20
+  matchers:
+    - {type: service, regex: '^mysql', weight: 0.9}
+    - {type: banner, regex: 'MySQL|MariaDB', weight: 0.9}
+- id: postgres
+  name: PostgreSQL
+  category: database
+  interest: 20
+  matchers:
+    - {type: service, regex: '^postgresql', weight: 0.9}
+- id: mongodb
+  name: MongoDB
+  category: database
+  interest: 30
+  matchers:
+    - {type: service, regex: '^mongod', weight: 0.9}
+- id: rdp
+  name: Pulpit zdalny (RDP)
+  category: interesting
+  interest: 20
+  matchers:
+    - {type: service, regex: '^ms-wbt-server', weight: 1.0}
+- id: vnc
+  name: VNC
+  category: interesting
+  interest: 25
+  matchers:
+    - {type: service, regex: '^vnc', weight: 1.0}
+- id: smb
+  name: SMB / udziały Windows
+  category: interesting
+  interest: 15
+  matchers:
+    - {type: service, regex: '^(microsoft-ds|netbios-ssn)$', weight: 1.0}
+- id: snmp
+  name: SNMP
+  category: interesting
+  interest: 15
+  matchers:
+    - {type: service, regex: '^snmp', weight: 1.0}
+
+# ---------- dodane po teście na labie AGH (custom-network) ----------
+- id: gitea
+  name: Gitea
+  category: devops
+  interest: 20
+  matchers:
+    - {type: title, regex: '(?i)gitea', weight: 0.8}
+    - {type: cookie, name: '^i_like_gitea$', weight: 0.9}
+    - {type: body, regex: 'content="Gitea|gitea-version|assetUrlPrefix', weight: 0.6}
+    - {type: path, path: /api/v1/version, status: [200], regex: '"version"\s*:\s*"(?P<version>[^"]+)"', weight: 0.7}
+- id: installer-exposed
+  name: Odsłonięty kreator instalacji
+  category: interesting
+  interest: 45
+  matchers:
+    - {type: title, regex: '(?i)(^|[\s›»:-])(installation|instalacja|setup wizard|initial setup)\b', weight: 0.9}
+    - {type: body, regex: '(?i)<form[^>]+action="[^"]*/install', weight: 0.7}
+- id: rabbitmq-management
+  name: RabbitMQ Management
+  category: admin-panel
+  interest: 25
+  matchers:
+    - {type: title, regex: 'RabbitMQ Management', weight: 1.0}
+    - {type: body, regex: 'rabbitmq', weight: 0.4}
+    - {type: path, path: /api/overview, status: [401], weight: 0.5}
+- id: amqp-broker
+  name: Broker AMQP (RabbitMQ)
+  category: other
+  interest: 10
+  matchers:
+    - {type: service, regex: '^amqps?$', weight: 0.9}
+    - {type: banner, regex: 'RabbitMQ(?: (?P<version>[\d.]+))?|Advanced Message Queue', weight: 0.6}
+- id: httpbin
+  name: httpbin (serwis testowy HTTP)
+  category: interesting
+  interest: 10
+  matchers:
+    - {type: title, regex: '^httpbin', weight: 0.9}
+    - {type: path, path: /spec.json, status: [200], regex: '"title"\s*:\s*"httpbin', weight: 0.8}
+
+# ---------- dopisane po teście stacku AGH „vulnerable” (22.11.2026) ----------
+- id: adminer
+  name: Adminer (panel bazy danych)
+  category: admin-panel
+  interest: 35
+  matchers:
+    - {type: title, regex: 'Adminer', weight: 0.8}
+    - {type: cookie, name: '^adminer_(sid|key|version)$', weight: 0.8}
+    - {type: body, regex: '<span class="version">(?P<version>[\d.]+)</span>', weight: 0.3}
+- id: dvwa
+  name: DVWA (celowo podatna aplikacja testowa)
+  category: staging
+  interest: 60
+  matchers:
+    - {type: title, regex: 'Damn Vulnerable Web Application(?:.*?v(?P<version>[\d.]+))?', weight: 1.0}
+    - {type: cookie, name: '^security$', weight: 0.2}

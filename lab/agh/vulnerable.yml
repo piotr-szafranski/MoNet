@@ -1,0 +1,25 @@
+# Kopia stacku AGH docker-compose-vulnerable.yml (celowo stare usługi, domyślne hasła). NIE wystawiać na hosta.
+# Różnice: nazwa asi-agh-*, brak portów na hoście, adresy w izolowanej sieci asi-lab; mysql tylko w sieci wewnętrznej (jak u AGH).
+name: asi-agh-vulnerable
+services:
+  wordpress:
+    image: "wordpress:4.7"
+    environment: { WORDPRESS_DB_HOST: mysql, WORDPRESS_DB_USER: wpuser, WORDPRESS_DB_PASSWORD: wppass, WORDPRESS_DB_NAME: wordpress }
+    depends_on: { mysql: { condition: service_healthy } }
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.21 } }          # AGH: 8088->80
+  mysql:
+    image: "mysql:5.7"
+    environment: { MYSQL_ROOT_PASSWORD: root, MYSQL_DATABASE: wordpress, MYSQL_USER: wpuser, MYSQL_PASSWORD: wppass }
+    healthcheck: { test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"], interval: 10s, timeout: 5s, retries: 10 }
+  adminer:
+    image: adminer
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.22 } }          # AGH: 8089->8080
+  ftp:
+    image: fauria/vsftpd
+    environment: { FTP_USER: test, FTP_PASS: test123, PASV_ADDRESS: 10.66.4.23, PASV_MIN_PORT: 21000, PASV_MAX_PORT: 21010 }
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.23 } }          # AGH: 21
+  dvwa:
+    image: vulnerables/web-dvwa
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.24 } }          # AGH: 8090->80
+networks:
+  lab: { external: true, name: asi-lab }

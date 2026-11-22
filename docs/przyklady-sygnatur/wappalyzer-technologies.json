@@ -1,0 +1,42 @@
+{
+  "technologies": {
+    "Nextcloud": {
+      "cats": [
+        1
+      ],
+      "html": "<a href=\"https://nextcloud.com\"",
+      "headers": {
+        "X-Nextcloud-Cache": ""
+      },
+      "meta": {
+        "apple-itunes-app": "app-id=1125420102"
+      }
+    },
+    "Roundcube": {
+      "cats": [
+        30
+      ],
+      "html": "<title>[^>]*Roundcube",
+      "cookies": {
+        "roundcube_sessid": ""
+      }
+    },
+    "OpenResty": {
+      "cats": [
+        22
+      ],
+      "headers": {
+        "Server": "openresty(?:/([\\d.]+))?\\;version:\\1"
+      }
+    },
+    "Synology DiskStation": {
+      "cats": [
+        48
+      ],
+      "html": "<title>Synology(?:&nbsp;| )DiskStation",
+      "meta": {
+        "description": "^DiskStation provides a full-featured network attached storage"
+      }
+    }
+  }
+}

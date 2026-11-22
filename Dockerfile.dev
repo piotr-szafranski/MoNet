@@ -1,0 +1,8 @@
+# Obraz deweloperski: binarka zbudowana na hoście (CGO_ENABLED=0) + nmap.
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends nmap ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
+COPY bin/asi /usr/local/bin/asi
+ENV ASI_DATA=/data ASI_ADDR=:8080 TZ=Europe/Warsaw
+VOLUME /data
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/asi"]

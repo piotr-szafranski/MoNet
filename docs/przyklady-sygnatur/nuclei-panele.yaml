@@ -1,0 +1,61 @@
+id: zabbix-login-panel
+info:
+  name: Zabbix – panel logowania
+  severity: info
+  tags: panel,zabbix
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/zabbix/index.php"
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "Zabbix SIA"
+      - type: status
+        status:
+          - 200
+---
+id: keycloak-detect
+info:
+  name: Keycloak
+  severity: info
+  tags: tech,sso
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "keycloak"
+          - "kc-form-login"
+---
+id: nginx-status-exposed
+info:
+  name: Odsłonięty nginx_status
+  severity: low
+  tags: exposure,nginx
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nginx_status"
+    matchers:
+      - type: regex
+        part: body
+        regex:
+          - "Active connections: [0-9]+"
+---
+id: przyklad-niebezpieczny
+info:
+  name: Przykład z zapytaniem POST (zostanie pominięty)
+  severity: high
+http:
+  - method: POST
+    path: ["{{BaseURL}}/login"]
+    body: "user=admin&pass=admin"
+    matchers:
+      - type: word
+        words: ["Welcome"]

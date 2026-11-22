@@ -1,0 +1,21 @@
+# MoNet: uruchomienie produkcyjne. Klucz szyfrowania podaj w .env (ASI_MASTER_KEY=base64 32 B):
+#   echo "ASI_MASTER_KEY=$(openssl rand -base64 32)" > .env && docker compose up -d --build
+name: asi
+services:
+  asi:
+    container_name: asi-app
+    build: .
+    ports: ["8080:8080"]
+    volumes: ["asi-data:/data"]
+    environment:
+      ASI_MASTER_KEY: ${ASI_MASTER_KEY:?ustaw ASI_MASTER_KEY w pliku .env}
+      ASI_ADMIN_PASSWORD: ${ASI_ADMIN_PASSWORD:?ustaw ASI_ADMIN_PASSWORD (min. 10 znaków) w pliku .env}
+      ASI_DEMO_USERS: ${ASI_DEMO_USERS:-0}   # produkcja: bez kont demo (lab: docker-compose.lab.yml)
+      ASI_ALLOW_KEYGEN: "0"
+      TZ: Europe/Warsaw
+    restart: unless-stopped
+    # Skanowanie sieci fizycznej z kontenera: najlepsze wyniki daje network_mode: host
+    # (surowe pakiety nmapa, ARP w sieci lokalnej). Wtedy usuń sekcję ports.
+    # network_mode: host
+volumes:
+  asi-data:

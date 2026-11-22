@@ -1,0 +1,5 @@
+name,type,pattern,category,interest,header,path,status
+Aplikacja dziekanatu,title,USOSweb,interesting,15,,,
+Aplikacja dziekanatu,cookie,^USOSweb,,,,,
+Endpoint health,path,"""status""",interesting,10,,/health,200
+Serwer wewnętrzny X,header,X-Internal-App/(?P<version>[\d.]+),interesting,20,x-internal-app,,

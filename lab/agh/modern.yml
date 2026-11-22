@@ -1,0 +1,28 @@
+# Kopia stacku AGH docker-compose-modern.yml. Różnice: nazwa asi-agh-*, brak portów na hoście, adresy w asi-lab;
+# mariadb tylko w sieci wewnętrznej (u AGH też bez portu).
+name: asi-agh-modern
+services:
+  wordpress:
+    image: "wordpress:latest"
+    environment: { WORDPRESS_DB_HOST: mariadb, WORDPRESS_DB_USER: wordpress, WORDPRESS_DB_PASSWORD: wordpresspass, WORDPRESS_DB_NAME: wordpress }
+    depends_on: { mariadb: { condition: service_healthy } }
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.31 } }          # AGH: 8080->80
+  mariadb:
+    image: "mariadb:11"
+    environment: { MYSQL_ROOT_PASSWORD: rootpass, MYSQL_DATABASE: wordpress, MYSQL_USER: wordpress, MYSQL_PASSWORD: wordpresspass }
+    healthcheck: { test: ["CMD-SHELL", "mariadb-admin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"], interval: 10s, timeout: 5s, retries: 10 }
+    volumes: [mariadb_data:/var/lib/mysql]
+  phpmyadmin:
+    image: "phpmyadmin:latest"
+    environment: { PMA_HOST: mariadb }
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.32 } }          # AGH: 8081->80
+  redis:
+    image: "redis:7"
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.33 } }          # AGH: 6379
+  nginx-proxy-manager:
+    image: "jc21/nginx-proxy-manager:latest"
+    volumes: [npm_data:/data, npm_letsencrypt:/etc/letsencrypt]
+    networks: { default: {}, lab: { ipv4_address: 10.66.4.34 } }          # AGH: 80, 81, 443
+volumes: { mariadb_data: {}, npm_data: {}, npm_letsencrypt: {} }
+networks:
+  lab: { external: true, name: asi-lab }

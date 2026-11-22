@@ -1,0 +1,15 @@
+# Aplikacja MoNet podłączona do labu testowego (sieć asi-lab musi istnieć: najpierw lab/docker-compose.yml).
+name: asi
+services:
+  asi:
+    container_name: asi-app
+    build: { context: ., dockerfile: Dockerfile.dev }
+    ports: ["8095:8080"]
+    volumes: ["./data:/data"]
+    environment:
+      TZ: Europe/Warsaw
+      ASI_DEMO_USERS: "1"
+    networks: [default, lab]
+    restart: unless-stopped
+networks:
+  lab: { external: true, name: asi-lab }
